@@ -1,0 +1,11 @@
+/* Studio Yume — design tokens (PRD §5) */
+:root {
+  --bg: #050706;
+  --bg-raise: #0a0f0c;
+  --glass: rgba(10, 16, 12, 0.55);
+  --emerald: #1fe079;
+  --emerald-deep: #0b9d52;
+  --emerald-dim: rgba(31, 224, 121, 0.35);
+  --text: #e8f0ea;
+  --text-dim: rgba(232, 240, 234, 0.55);
+}
