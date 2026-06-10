@@ -2,8 +2,9 @@
 
 One-page scroll-narrative marketing site. Black, emerald, smoked glass —
 a luxury reinterpretation of the original Xbox boot/dashboard aesthetic,
-anchored by the Dream Core: a smoked-glass monolith that activates on boot,
-opens into five labeled layers on scroll, and reforms at the final CTA.
+anchored by the Dream Core: an animated emerald particle orb that activates
+on boot, opens into five labeled particle layers on scroll, and reforms at
+the final CTA.
 
 ## Stack
 
@@ -33,17 +34,19 @@ npm run build && npm start
   Lite skips the scrubbed geometry and shows the static exploded diagram;
   reduced/none get a CSS poster of the core and lit end-states. Append
   `?tier=full|lite|reduced|none` to force a tier for QA.
-- **Glass:** one shared `MeshPhysicalMaterial` with transmission across all
-  five slices — a single transmission pass instead of five Drei
-  `MeshTransmissionMaterial` buffers. Bloom is luminance-gated so only the
-  un-tonemapped emissives (plasma + 夢 mark) bloom.
+- **Particles:** the orb is a single `THREE.Points` draw call with a custom
+  shader (fresnel rim brightness, per-particle shimmer, band attribute for
+  the 5-layer separation), plus a second draw for the orbiting dust ring.
+  No lights, no transmission — cheap on mobile. Bloom is luminance-gated so
+  only HDR values (the rim + 夢 mark) bloom.
 - **3D never blocks first paint:** the canvas is `next/dynamic`-loaded and
   fades in over the CSS poster.
 
 ## Build notes (deviations / open decisions)
 
-- Core form: slab/monolith (the PRD's lean), 夢 as an emissive mark inside
-  the volume; the wordmark lives in the UI.
+- Core form: animated particle orb (art-directed revision of the PRD's
+  glass slab), 夢 as an emissive mark inside the orb; the wordmark lives
+  in the UI. Kept emerald-only per the hard color rules.
 - `Start a Project` currently points to a `mailto:` placeholder
   (`content/copy.ts`) — swap for Calendly/Cal.com or a form before launch
   (PRD §14.4).

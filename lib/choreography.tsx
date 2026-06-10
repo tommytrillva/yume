@@ -120,7 +120,7 @@ export function Choreography() {
           end: "center 55%",
           onUpdate: (self) => {
             const p = self.progress;
-            coreState.opacity = lerp(0.1, 0.85, p);
+            coreState.opacity = lerp(0.1, 0.75, p);
             coreState.scale = lerp(0.5, 0.9, p);
             coreState.openness = 1 - p;
           },
