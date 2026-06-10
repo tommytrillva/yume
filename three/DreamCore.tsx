@@ -189,22 +189,44 @@ function makeParticleMaterial(size: number, intensity: number) {
 function useKanjiTexture() {
   const texture = useMemo(() => {
     const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 512;
+    canvas.width = 1024;
+    canvas.height = 1024;
     const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.clearRect(0, 0, 512, 512);
+      ctx.clearRect(0, 0, 1024, 1024);
+      // crisp fill, no blur — legibility over glow (bloom stays off it)
       ctx.fillStyle = "#ffffff";
       ctx.font =
-        "700 330px 'Hiragino Sans', 'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic', sans-serif";
+        "600 660px 'Hiragino Sans', 'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic', sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.shadowColor = "#ffffff";
-      ctx.shadowBlur = 14;
-      ctx.fillText("夢", 256, 272);
+      ctx.fillText("夢", 512, 544);
     }
     const tex = new THREE.CanvasTexture(canvas);
-    tex.anisotropy = 4;
+    tex.anisotropy = 8;
+    return tex;
+  }, []);
+
+  useEffect(() => () => texture.dispose(), [texture]);
+  return texture;
+}
+
+/** Soft dark disc to quiet the particle field directly behind the mark. */
+function useBackingTexture() {
+  const texture = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+      grad.addColorStop(0, "rgba(255,255,255,0.9)");
+      grad.addColorStop(0.55, "rgba(255,255,255,0.5)");
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 256, 256);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
     return tex;
   }, []);
 
@@ -218,8 +240,11 @@ export function DreamCore({ quality }: { quality: "full" | "lite" }) {
   const haloMat = useRef<THREE.MeshBasicMaterial>(null);
   const coreGlowMat = useRef<THREE.MeshBasicMaterial>(null);
   const markMat = useRef<THREE.MeshBasicMaterial>(null);
+  const markGroup = useRef<THREE.Group>(null);
+  const backingMat = useRef<THREE.MeshBasicMaterial>(null);
 
   const kanji = useKanjiTexture();
+  const backing = useBackingTexture();
 
   const counts =
     quality === "full"
@@ -310,12 +335,23 @@ export function DreamCore({ quality }: { quality: "full" | "lite" }) {
       haloMat.current.opacity = activation * 0.1 * pulse * (1 - openness * 0.5);
     }
     if (coreGlowMat.current) {
-      coreGlowMat.current.opacity = activation * 0.28 * pulse * (1 - openness * 0.6);
+      coreGlowMat.current.opacity = activation * 0.14 * pulse * (1 - openness * 0.6);
+    }
+    if (markGroup.current) {
+      // billboard: undo the group rotation so 夢 always faces the camera
+      markGroup.current.quaternion.copy(g.quaternion).invert();
     }
     if (markMat.current) {
-      // the mark belongs to the assembled orb — gone while layers are open
-      markMat.current.opacity = activation * 0.92 * (1 - openness);
-      markMat.current.color.copy(EMERALD).multiplyScalar(0.5 + energy * 1.9);
+      // the mark belongs to the assembled orb — gone while layers are open.
+      // Brightness stays below the bloom threshold so the glyph reads
+      // crisp instead of smearing into a blob.
+      markMat.current.opacity = activation * 0.95 * (1 - openness);
+      markMat.current.color
+        .copy(EMERALD)
+        .multiplyScalar(0.62 + 0.18 * pulse * activation);
+    }
+    if (backingMat.current) {
+      backingMat.current.opacity = activation * 0.4 * (1 - openness);
     }
   });
 
@@ -356,19 +392,33 @@ export function DreamCore({ quality }: { quality: "full" | "lite" }) {
         />
       </mesh>
 
-      {/* 夢 — emissive mark floating inside the orb */}
-      <mesh position={[0, 0, 0.3]}>
-        <planeGeometry args={[0.95, 0.95]} />
-        <meshBasicMaterial
-          ref={markMat}
-          alphaMap={kanji}
-          transparent
-          opacity={0}
-          toneMapped={false}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+      {/* 夢 — the mark floating inside the orb, billboarded to the camera */}
+      <group ref={markGroup}>
+        {/* dark backing disc so the glyph isn't fighting the particle field */}
+        <mesh position={[0, 0, 0.42]}>
+          <planeGeometry args={[1.5, 1.5]} />
+          <meshBasicMaterial
+            ref={backingMat}
+            color="#050706"
+            alphaMap={backing}
+            transparent
+            opacity={0}
+            depthWrite={false}
+          />
+        </mesh>
+        <mesh position={[0, 0, 0.5]}>
+          <planeGeometry args={[0.95, 0.95]} />
+          <meshBasicMaterial
+            ref={markMat}
+            alphaMap={kanji}
+            transparent
+            opacity={0}
+            toneMapped={false}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      </group>
     </group>
   );
 }
